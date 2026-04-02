@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShortLinks</title>
+  <link rel="stylesheet" href="/assets/css/style.css" type="text/css" media="screen">
+  <link rel="icon"       href="/assets/img/favicon.png">
+  <script src="/assets/js/jquery-4.0.0.min.js"></script>
+</head>
+<body>
+  <div id="header">
+    <img src="/assets/img/virus-96x96-white.png">
+    <title>ShortLinks</title>
+  </div>
+  
+  <div id="container-main">
+    <div id="content-main" class="container">
+      <h1>Create a short link</h1>
+      <hr>
+      <div id="new">
+	<input type="text" id="new-link" placeholder="Link" style="width:100%"/>
+	<br>
+	<input type="text" id="new-name" placeholder="(Optional) Name" style="width:50%"/>
+	<button id="btn-new-link">Create</button>
+	<br>
+	<div class="center">
+	  <div id="mylink"></div>
+	  <div id="qrcode"></div>
+	</div>
+      </div>
+      <script src="/assets/js/qrcode.js"></script>
+      <script type="text/javascript">
+    $('#btn-new-link').click(function(){
+	// TODO: Call the function creation method
+	// TODO: Update link output
+	// TODO: Update the QRCode output
+	// TODO: Put the link in the clipboard
+	// TODO: Create a "Copied" toast
+	var url = "https://google.com/toto";
+
+	$('#mylink').addClass("output");
+	$('#mylink').text(url);
+
+        var qrcode = new QRCode(document.getElementById("qrcode"), {
+	    text:        url,
+	    width:       300,
+	    height:      300,
+	    colorDark:   "#009933",
+	    colorLight:  "#ffffff",
+	    correctLevel: QRCode.CorrectLevel.Q,
+        });
+    });
+      </script>
+
+      <br>
+      <br>
+      <h1>Manage your existing links</h1>
+      <hr>
+      <div id="mylinks">
+	<table>
+	  <thead>
+	    <tr>
+	      <td>Link name</td><td>Link destination</td><td>Action</td>
+	    </tr>
+	  </thead>
+	  <tbody id="mylinks-body">
+	    <tr name="azerty">
+	      <td>azerty</td><td>https://kjlsclsc.dsqjdsqdsq.com/djkdlsqkjdklqs/dsqdjsqkdsq/djisqdskql</td><td>Delete</td>
+	    </tr>
+	    <tr><td colspan="3" style="text-align:center">loading...</td></tr>
+	  </tbody>
+	</table>
+      </div>
+    </div>
+
+    <div id="footer">
+      <img class="right" src="/assets/img/virus-96x96-white.png">
+      <p>&copy; 2026 Leaveteam. All rights reserved.</p>
+    </div>
+  </div>
+  <script type="text/javascript">
+    $(document).ready(function(){
+	// TODO: Call the whoami function to check the authentication
+	// TODO: Call the function to list the existing links of a user
+	// TODO: Update link list
+    });
+  </script>
+</body>
+</html>
