@@ -1,10 +1,15 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+# Global imports
+import re
 import requests
 
+# Local imports
+import utils
 
 
+# TODO: optimise auth
 def authenticate(scope):
     url  = 'http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=%s' % scope
     resp = requests.get(url, headers={'Metadata': 'true'})
@@ -42,11 +47,33 @@ def blob_delete(url):
     r.raise_for_status()
 
 
-def blob_list(url, prefix):
-    s = authenticate("https://management.core.windows.net/")
-    u = '%s?restype=container&comp=list&prefix=%s&include=metadata' % (url, prefix)
+def blob_exists(url):
     try:
-        r = s.get(u, headers=blob_headers())
+        blob_get(url)
+        return True
+    except:
+        return False
+
+
+def blob_get(url):
+    s = authenticate("https://management.core.windows.net/")
+    r = s.get(url, headers=blob_headers())
+    r.raise_for_status()
+    return r.text
+
+
+def blob_list(url, prefix, metadata=True):
+    s = authenticate("https://management.core.windows.net/")
+    p = {
+        'restype': 'container',
+        'comp':    'list',
+        'prefix':  prefix,
+    }
+    if metadata:
+        p['include'] = 'metadata'
+
+    try:
+        r = s.get(url, headers=blob_headers(), params=p)
         r.raise_for_status()
         #TODO: Follow tokens
         return blob_list_parse(r.text)
@@ -61,41 +88,67 @@ def blob_list_parse(xml):
     if len(xml) < 1:
         return r
 
-    blobs = str_between(xml, '<Blobs>', '</Blobs>')
+    blobs = utils.str_between(xml, '<Blobs>', '</Blobs>')
     if blobs is None:
         return r
 
     for blob in blobs.split('<Blob>'):
-        blob_name = str_between(blob, '<Name>', '</Name>')
+        blob_name = utils.str_between(blob, '<Name>', '</Name>')
         if blob_name is None:
             continue
         r[blob_name] = {}
 
-        metadatas = str_between(blob, '<Metadata>', '</Metadata>')
-        pairs     = re.findall(r"<(\w+)>(.*?)</\1>", metadatas)
-        if len(pairs) > 0:
-            r[blob_name] = dict(pairs)
+        metadatas = utils.str_between(blob, '<Metadata>', '</Metadata>')
+        if metadatas:
+            pairs = re.findall(r"<(\w+)>(.*?)</\1>", metadatas)
+            if len(pairs) > 0:
+                r[blob_name] = dict(pairs)
 
     return r
 
 
-def str_between(text, start, end):
-    if text is None:
-        return None
-
-    s = text.find(start)
-    if s < 0:
-        return None
-
-    s += len(start)
-    if s >= len(text):
-        return None
-
-    if end is None:
-        return text[s:]
-
-    e = text.find(end, s)
-    if e < 0:
-        return text[s:]
-
-    return text[s:e]
+if "__main__" == __name__:
+    from pprint import pprint
+    xml="""
+<?xml version="1.0" encoding="utf-8"?>
+<EnumerationResults ServiceEndpoint="http://myaccount.blob.core.windows.net/"  ContainerName="mycontainer">
+  <Prefix>string-value</Prefix>
+  <Marker>string-value</Marker>
+  <MaxResults>int-value</MaxResults>
+  <Delimiter>string-value</Delimiter>
+  <Blobs>
+    <Blob>
+      <Name>blob-name</Name>
+      <Snapshot>date-time-value</Snapshot>
+      <VersionId>date-time-vlue</VersionId>
+      <IsCurrentVersion>true</IsCurrentVersion>
+      <Deleted>true</Deleted>
+      <Properties>
+        <Creation-Time>date-time-value</Creation-Time>
+        <Last-Modified>date-time-value</Last-Modified>
+        <Etag>etag</Etag>
+        <Owner>owner user id</Owner>
+      </Properties>
+      <Metadata>
+        <Name>value</Name>
+        <User>toto@toto</User>
+      </Metadata>
+      <Tags>
+          <TagSet>
+              <Tag>
+                  <Key>TagName</Key>
+                  <Value>TagValue</Value>
+              </Tag>
+          </TagSet>
+      </Tags>
+      <OrMetadata />
+    </Blob>
+    <BlobPrefix>
+      <Name>blob-prefix</Name>
+    </BlobPrefix>
+  </Blobs>
+  <NextMarker />
+</EnumerationResults>  """
+    r = blob_list_parse(xml)
+    assert(r == {'blob-name': {'Name': 'value', 'User': 'toto@toto'}})
+    pprint(r)
