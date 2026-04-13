@@ -27,16 +27,27 @@ class HttpError(Exception):
         return "HttpError(%s): %s" % (self.status_code, self.message)
 
 
-def user_from_req(req):
-    # Get the token from the Authorization header
+def parse_msclientprincipal(req):
+    udata = req.headers.get('x-ms-client-principal')
+
+    data = json.loads(utils.b64d(udata))
+    for elt in data['claims']:
+        if elt['typ'] == 'preferred_username':
+            user = elt['val']
+            if not filter.is_user_upn(user):
+                raise HttpError(401, "Invalid user format in ms-client-principal")
+            return user
+
+    raise HttpError(401, "Bad ms-client-principal format")
+
+
+def parse_bearer(req):
     bearer = req.headers.get('authorization')
-    if not bearer:
-        raise HttpError(401, 'Missing authentication')
 
     # Extract the token
     elts = bearer.split(" ", 1)
     if (len(elts) < 2) or (elts[0] != "Bearer"):
-        raise HttpError(401, "Bad authentication format")
+        raise HttpError(401, "Bad bearer format")
 
     # Parse the token parameters
     jwt  = elts[1]
@@ -47,10 +58,26 @@ def user_from_req(req):
     user = data['unique_name']
 
     # Check id format
-    if not is_user(user):
+    if not filter.is_user_upn(user):
         raise HttpError(401, "Invalid user format")
 
     return user
+
+
+def user_from_req(req):
+    if 'x-ms-client-principal' in req.headers:
+        return parse_msclientprincipal(req)
+
+    if 'x-ms-client-principal-id' in req.headers:
+        oid = req.headers.get('x-ms-client-principal-id')
+        if not filter.is_user_oid(oid):
+            raise HttpError(401, "Invalid user format")
+        return oid
+
+    if 'authorization' in req.headers:
+        return parse_bearer(req)
+
+    raise HttpError(401, "Missing authentication")
 
 
 def param(req, name, flt, msg="", default=None, optional=False):
