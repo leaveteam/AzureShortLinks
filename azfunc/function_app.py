@@ -6,6 +6,7 @@
 ###############################################################################
 # Global
 import azure.functions as func
+import json
 
 # Local
 import config
@@ -18,29 +19,7 @@ import utils
 ###############################################################################
 ## Functions
 ###############################################################################
-
-
-###############################################################################
-## Routes
-###############################################################################
-app = func.FunctionApp()
-@app.route(route="ping", auth_level=func.AuthLevel.ANONYMOUS, methods=[func.HttpMethod.GET])
-def route_ping(req: func.HttpRequest) -> func.HttpResponse:
-    return func.HttpResponse("pong", mimetype="text/plain")
-
-
-@app.route(route="version", auth_level=func.AuthLevel.ANONYMOUS, methods=[func.HttpMethod.GET])
-def route_version(req: func.HttpRequest) -> func.HttpResponse:
-    return func.HttpResponse(config.VERSION, mimetype="text/plain")
-
-
-@app.route(route="whoami", auth_level=func.AuthLevel.ANONYMOUS, methods=[func.HttpMethod.GET])
-def route_whoami(req: func.HttpRequest) -> func.HttpResponse:
-    return func.HttpResponse(httputils.user_from_req(req), mimetype="text/plain")
-
-
-@app.route(route="new", auth_level=func.AuthLevel.ANONYMOUS, methods=[func.HttpMethod.GET])
-def route_new(req: func.HttpRequest) -> func.HttpResponse:
+def link_new(req):
     # Get params
     user = httputils.user_from_req(req)
     lnk  = httputils.param(req, 'lnk', is_link_id)
@@ -72,8 +51,7 @@ def route_new(req: func.HttpRequest) -> func.HttpResponse:
     return func.HttpResponse("done", mimetype="text/plain")
 
 
-@app.route(route="delete", auth_level=func.AuthLevel.ANONYMOUS, methods=[func.HttpMethod.GET])
-def route_delete(req: func.HttpRequest) -> func.HttpResponse:
+def link_delete(req):
     # Get params
     user = httputils.user_from_req(req)
     lnk  = httputils.param(req, 'lnk', is_link_id)
@@ -97,9 +75,41 @@ def route_delete(req: func.HttpRequest) -> func.HttpResponse:
     return func.HttpResponse("done", mimetype="text/plain")
 
 
-@app.route(route="list", auth_level=func.AuthLevel.ANONYMOUS, methods=[func.HttpMethod.GET])
-def route_list(req: func.HttpRequest) -> func.HttpResponse:
+def link_list(req):
     user = user_from_req(req)
 
     lnks = azutils.blob_list(url, b64e(user))
     return func.HttpResponse(lnks.keys(), mimetype="application/json")
+
+
+###############################################################################
+## Routes
+###############################################################################
+app = func.FunctionApp()
+@app.route(route="ping", auth_level=func.AuthLevel.ANONYMOUS, methods=[func.HttpMethod.GET])
+def route_ping(req: func.HttpRequest) -> func.HttpResponse:
+    return func.HttpResponse("pong", mimetype="text/plain")
+
+@app.route(route="version", auth_level=func.AuthLevel.ANONYMOUS, methods=[func.HttpMethod.GET])
+def route_version(req: func.HttpRequest) -> func.HttpResponse:
+    return func.HttpResponse(config.VERSION, mimetype="text/plain")
+
+@app.route(route="test", auth_level=func.AuthLevel.ANONYMOUS, methods=[func.HttpMethod.GET])
+def route_test(req: func.HttpRequest) -> func.HttpResponse:
+    return func.HttpResponse(json.dumps(dict(req.headers)), mimetype="text/plain")
+
+@app.route(route="whoami", auth_level=func.AuthLevel.ANONYMOUS, methods=[func.HttpMethod.GET])
+def route_whoami(req: func.HttpRequest) -> func.HttpResponse:
+    return httputils.route_error_mgnt(lambda x: httputils.response_json(200, httputils.user_from_req(x)), req)
+
+@app.route(route="new", auth_level=func.AuthLevel.ANONYMOUS, methods=[func.HttpMethod.POST])
+def route_new(req: func.HttpRequest) -> func.HttpResponse:
+    return httputils.route_error_mgnt(link_new, req)
+
+@app.route(route="delete", auth_level=func.AuthLevel.ANONYMOUS, methods=[func.HttpMethod.DELETE])
+def route_delete(req: func.HttpRequest) -> func.HttpResponse:
+    return httputils.route_error_mgnt(link_delete, req)
+
+@app.route(route="list", auth_level=func.AuthLevel.ANONYMOUS, methods=[func.HttpMethod.GET])
+def route_list(req: func.HttpRequest) -> func.HttpResponse:
+    return httputils.route_error_mgnt(link_list, req)

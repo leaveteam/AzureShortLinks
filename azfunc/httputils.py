@@ -1,8 +1,21 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+###############################################################################
+## Imports
+###############################################################################
+# Global
+import azure.functions as func
 import json
 
+# Local
+import filter
+import utils
+
+
+###############################################################################
+## Functions
+###############################################################################
 
 class HttpError(Exception):
     def __init__(self, status_code, message):
@@ -57,7 +70,16 @@ def param(req, name, flt, msg="", default=None, optional=False):
     return tmp
 
 
-def response(code, data):
-    return HttpResponse(json.dumps(data, indent=2),
-                        status_code=code,
-                        mimetype="application/json")
+def response_json(code, data):
+    return func.HttpResponse(json.dumps(data, indent=2),
+                             status_code=code,
+                             mimetype="application/json")
+
+
+def route_error_mgnt(route_func, req):
+    try:
+        return route_func(req)
+    except HttpError as e:
+        return func.HttpResponse(e.message, status_code=e.status_code)
+    #except BaseException as e:
+    #    return func.HttpResponse(e.message, status_code=500)
